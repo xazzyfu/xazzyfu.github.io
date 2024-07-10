@@ -1,0 +1,1455 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>How to Build a Python-to-C++ Compiler out of Spare Parts - and Why</title>
+
+    <link rel="stylesheet" href="dist/reset.css">
+    <link rel="stylesheet" href="dist/reveal.css">
+    <link rel="stylesheet" href="dist/theme/black.css">
+    <link rel="stylesheet" href="plugin/highlight/monokai.css">
+
+    <link rel="stylesheet" href="style.css">
+  </head>
+
+  <body>
+    <div class="reveal"><div class="slides">
+
+      <!-- Title -->
+      <section>
+        <div class="fit-lines" style="--ratio: 4 / 3;">
+          <h2><span class="r-fit-text">How to Build a</span>
+          <span class="r-fit-text">Python-to-C++ Compiler</span>
+          <span class="r-fit-text">out of Spare Parts</span>
+          <span><u> - and Why</u></span></h2>
+        </div>
+      </section>
+
+      <!-- Link to slides -->
+      <section>
+        <h2 class="r-fit-text"><a
+          href=https://xazzyfu.github.io/europython2024/
+          style="text-transform: none;"
+          ><u>xazzyfu.github.io/europython2024/</u></a></h2>
+
+          <aside class="notes">
+            You can find the slides here
+          </aside>
+      </section>
+
+      <!-- About Us -->
+      <section>
+        <section>
+          <img src="assets/map.png">
+
+          <aside class="notes">
+            ^^ Lille and Prague on a Map
+            # locator on Lille, and Prague, and maybe arched line, maybe with distance
+            # Nexedi logo, maybe with locator on Lille
+          </aside>
+        </section>
+
+        <section data-auto-animate>
+          <h2>Developed by Nexedi</h2>
+          <img src="assets/slapos_logo.svg">
+          <img src="assets/neo_logo.png">
+          <img src="assets/erp5_logo.svg">
+          <img src="assets/re6st_logo.png">
+
+          <aside class="notes">
+            Nexedi Softwares
+            logos; maybe animations / transformations to focus on one
+          </aside>
+        </section>
+
+        <section data-auto-animate>
+          <img src="assets/erp5_logo.svg" style="width: 80%">
+
+          <aside class="notes">
+            Focus on ERP5
+          </aside>
+        </section>
+      </section>
+
+      <!-- Context -->
+      <section>
+        <section>
+          <h2 class="r-fit-text">Performance</h2>
+          <h2 class="r-fit-text"> is a topic</h2>
+
+          <aside class="notes">
+            When talking about performance of Python, two facts come up:
+          </aside>
+        </section>
+
+        <section>
+          <h3>Python is interpreted</h3>
+          <img src="assets/python_is_interpreted.png">
+
+          <aside class="notes">
+            Python is interpreted
+          </aside>
+        </section>
+
+        <section>
+          <h3>The global interpreter lock</h3>
+          <img src="assets/python_has_a_gil.png">
+
+          <aside class="notes">
+            The interpreter (CPython) has a global interpreter lock
+          </aside>
+        </section>
+
+        <section>
+          <h3>at nexedi</h3>
+          <img src="assets/erp5_billing_run.png">
+
+          <aside class="notes">
+            Performance is a topic for us at Nexedi
+          </aside>
+        </section>
+
+        <section>
+          <h3>in the industry</h3>
+          <ul>
+            <li class="fragment">Migration From Python (Partial) – DropBox (Go)</li>
+            <li class="fragment">In-house Interpreters – Instagram / Meta (Cinder)</li>
+            <li class="fragment">Not Python To Start With – Clevercloud (Rust)</li>
+          </ul>
+
+        </section>
+
+        <section data-auto-animate>
+          <h3>Performance is a Topic</h3>
+          <div class="fragment">
+            <h4>EuroPython 2024 :)</h4>
+            <ul>
+              <li>Yesterday – SPy (Static Python) lang: fast as C, Pythonic as Python</li>
+              <li>Yesterday – Accelerating Python with Rust: The PyO3 Revolution</li>
+              <li>Today – How we used vectorization for 1000x Python speedups (no C or Spark needed!)</li>
+              <li>Tomorrow – Python in Parallel: Sub-Interpreters vs. NoGIL vs. Multiprocessing</li>
+            </ul>
+          </div>
+
+          <aside class="notes">
+            Performance is a topic for Python in general.
+            Parallel execution in particular.
+          </aside>
+        </section>
+
+        <section data-auto-animate>
+          <h3>Performance is a Topic</h3>
+          <h4>PEPs</h4>
+          <ul>
+            <li>PEP 659 – Specializing Adaptive Interpreter</li>
+            <li>PEP 684 – A Per-Interpreter GIL</li>
+            <li>PEP 703 – Making the Global Interpreter Lock Optional in CPython</li>
+            <li>PEP 744 – JIT Compilation</li>
+          </ul>
+        </section>
+
+        <section data-auto-animate>
+          <h3>Performance is a Topic</h3>
+          <h4>Faster Interpreters</h4>
+          <ul>
+            <li>Cinder (Meta) – CPython fork</li>
+            <li>Faster CPython (Microsoft) – CPython fork</li>
+            <li>PyPy – Drop-in</li>
+            <li>Pyston – Drop-in</li>
+          </ul>
+        </section>
+
+        <section data-auto-animate>
+          <h3>Performance is a Topic</h3>
+          <h4>Optimizing compilers</h4>
+          <ul>
+            <li>Cython</li>
+            <li>Numba</li>
+            <li>Codon</li>
+            <li>Nuitka</li>
+            <li>Shed Skin</li>
+          </ul>
+        </section>
+
+        <section>
+          <div style="display: flex;">
+            <div>
+              <h4>Faster Interpreters</h4>
+              <img src="assets/python_is_interpreted.png" width=80%>
+              <div>
+                <ul>
+                  <li>Drop-in replacement</li>
+                  <li>multiprocessing, threads, async/await</li>
+                </ul>
+              </div>
+            </div>
+            <div>
+              <h4>Optimizing compilers</h4>
+              <img src="assets/compiling_python.png" width=80%>
+              <div>
+                <ul>
+                  <li>Critical sections mostly</li>
+                  <li>OpenMP, C code</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <aside class="notes">
+            Comparison
+            Both lacking in wanted concurrency primitives
+          </aside>
+        </section>
+      </section>
+
+      <!-- Typon -->
+      <section>
+        <section>
+          <img src="assets/typon_font.svg">
+
+          <aside class="notes">
+            Typon
+              A Python-to-C++ compiler
+              Focus on parallelism / concurrency
+              Typon =&gt; Python
+              No interpreter needed; CPython interoperability
+          </aside>
+        </section>
+
+        <section>
+          <div class="flex">
+            <img src="assets/lightbulb.png">
+            <h3>Focus on concurrency and parallelism</h3>
+          </div>
+        </section>
+
+        <section data-auto-animate>
+          <div style="display: flex;">
+            <div>
+              <h4>Faster Interpreters</h4>
+              <img src="assets/python_is_interpreted.png" width=80%>
+              <div>
+                <ul>
+                  <li>Drop-in replacement</li>
+                  <li>multiprocessing, threads, async/await</li>
+                </ul>
+              </div>
+            </div>
+            <div>
+              <h4>Typon</h4>
+              <img src="assets/compiling_to_cpp.png" width=80%>
+              <div>
+                <ul>
+                  <li>Compile whole programs</li>
+                  <li>Builtin concurrency</li>
+                </ul>
+              </div>
+            </div>
+            <div>
+              <h4>Optimizing compilers</h4>
+              <img src="assets/compiling_python.png" width=80%>
+              <div>
+                <ul>
+                  <li>Critical sections mostly</li>
+                  <li>OpenMP, C code</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <aside class="notes">
+            Comparison
+            Both lacking in wanted concurrency primitives
+          </aside>
+        </section>
+
+        <section data-auto-animate>
+          <div style="display: flex;">
+            <div>
+              <img src="assets/compiling_to_cpp.png" width=60%>
+              <div>
+                <ul>
+                  <li>Compile whole programs</li>
+                  <li>Builtin concurrency</li>
+                  <li class="fragment">Typon ⊂ Python</li>
+                  <li class="fragment">Python interoperability</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <aside class="notes">
+            Comparison
+            Both lacking in wanted concurrency primitives
+          </aside>
+        </section>
+      </section>
+
+      <!-- Concurrency Engine -->
+      <section>
+        <section>
+          <div class="fit-lines" style="--ratio: 4 / 3;">
+            <h2><span class="r-fit-text">– 2022 –</span>
+            <span class="r-fit-text">Writing a Scheduler</span></h2>
+          </div>
+        </section>
+
+        <section>
+          <h3>M:N Scheduler</h3>
+          <h4 style="text-transform: none;"><u>M</u>any concurrent tasks over <u>N</u> worker threads</h4>
+        </section>
+
+        <section>
+          <h3>Concurrency primitives</h3>
+          <h3><code>fork</code>
+            <span style="text-transform: none"> and </span>
+            <code>sync</code><h3>
+        </section>
+
+        <section data-auto-animate data-auto-animate-restart>
+          <pre><code data-trim class="hljs python">
+          def f():
+            # - before -
+            fork(lambda: child())
+            # - continuation -
+          </code></pre>
+        </section>
+
+        <section data-auto-animate>
+          <div class="flex">
+            <pre><code data-trim class="hljs python">
+            def f():
+              # - before -
+              fork(lambda: child())
+              # - continuation -
+            </code></pre>
+            <img src="assets/fork_sequential.png">
+          </div>
+        </section>
+
+        <section data-auto-animate>
+          <div class="flex">
+            <pre><code data-trim class="hljs python">
+            def f():
+              # - before -
+              fork(lambda: child())
+              # - continuation -
+            </code></pre>
+            <img src="assets/fork_steal.png">
+          </div>
+        </section>
+
+        <section>
+          <img src="assets/deque.png">
+        </section>
+
+        <section>
+          <div class="flex">
+            <img src="assets/workers.png">
+          </div>
+        </section>
+
+        <section data-auto-animate>
+          <div class="r-stack">
+            <img
+              src="assets/fork_push_pop_simple.png"
+              >
+            <img
+              src="assets/fork_push_pop_recursive.png"
+              class="fragment">
+            <img
+              src="assets/fork_push_pop_recursive_steal.png"
+              class="fragment"
+              data-id="recursive_fork">
+          </div>
+        </section>
+
+        <section data-auto-animate>
+          <div class="flex">
+            <img
+              src="assets/fork_push_pop_recursive_steal.png"
+              data-id="recursive_fork">
+            <pre><code data-trim class="hljs python">
+            <script type="text/template">
+            def fibonacci(n): # naive but parallel
+              if n < 2:
+                return n
+              a = fork(lambda: fibonacci(n - 1))
+              b = fibonacci(n - 2)
+              sync() # teaser
+              return a + b
+            </script></code></pre>
+          </div>
+        </section>
+
+        <section data-auto-animate data-auto-animate-restart>
+          <pre><code data-trim class="hljs python">
+          def f():
+            # - before -
+            result = fork(lambda: child())
+            # - continuation -
+            sync()
+            # - joined -
+            return result
+          </code></pre>
+        </section>
+
+        <section data-auto-animate>
+          <div class="flex">
+            <pre><code data-trim class="hljs python">
+            def f():
+              # - before -
+              result = fork(lambda: child())
+              # - continuation -
+              sync()
+              # - joined -
+              return result
+            </code></pre>
+            <img src="assets/sync_sequential.png">
+          </div>
+        </section>
+
+        <section data-auto-animate>
+          <div class="flex">
+            <pre><code data-trim class="hljs python">
+            def f():
+              # - before -
+              result = fork(lambda: child())
+              # - continuation -
+              sync()
+              # - joined -
+              return result
+            </code></pre>
+            <img src="assets/sync_steal_1.png">
+          </div>
+        </section>
+
+        <section data-auto-animate>
+          <div class="flex">
+            <pre><code data-trim class="hljs python">
+            def f():
+              # - before -
+              result = fork(lambda: child())
+              # - continuation -
+              sync()
+              # - joined -
+              return result
+            </code></pre>
+            <img src="assets/sync_steal_2.png">
+          </div>
+        </section>
+
+        <section>
+          <h3 class="r-fit-text">Structured Concurrency</h3>
+
+          <aside class="notes">
+            <h4><em>= implicit sync on callee scope exit</em></h4>
+            <ul>
+              <li>Localized concurrency</li>
+              <li>Easier to reason about</li>
+              <li>Never discard exceptions</li>
+            </ul>
+          </aside>
+        </section>
+
+        <section>
+          <pre><code data-trim class="hljs python">
+          def f():
+            # ...
+            fork(lambda: child())
+            # ...
+            # implicit sync (even if exception)
+
+          f() # no concurrency leak
+          </code></pre>
+        </section>
+
+        <section>
+          <h3 class="r-fit-text">Concurrent I/O</h3>
+
+          <aside class="notes">
+            What about I/O?
+          </aside>
+        </section>
+
+        <section data-auto-animate>
+          <pre data-id="server"><code data-line-numbers data-trim class="hljs python">
+          def server(sock):
+            while True:
+              conn = sock.accept()[0]
+              handle(conn) # only one connection at a time
+
+          def handle(conn):
+            msg = conn.recv(1024) # python: classic thread-blocking I/O
+            #...
+          </code></pre>
+
+          <aside class="notes">
+            Let's take an example: a basic web server in Python
+          </aside>
+        </section>
+
+        <section data-auto-animate>
+          <pre data-id="server"><code data-line-numbers data-trim class="hljs python">
+          def server(sock):
+            while True:
+              conn = sock.accept()[0]
+              fork(lambda: handle(conn)) # C10K capable :)
+
+          def handle(conn):
+            msg = conn.recv(1024) # typon: asynchronous I/O by io_uring
+            #...
+          </code></pre>
+
+          <aside class="notes">
+            Change it like this and compile it with Typon
+            Easy, almost same code
+            Solves C10K problem, we wrote a 50-line HTTP server
+                and benchmarked it against nginx: half as good,
+                not bad for 50 lines
+            Mention exception propagation
+            Asynchronous non-blocking I/O:
+                to let the worker thread do something else
+          </aside>
+        </section>
+
+        <section data-auto-animate data-auto-animate-restart>
+          <div class="flex">
+            <img src="assets/workers.png">
+          </div>
+
+          <aside class="notes">
+            Looking back to the scheduler and worker threads
+          </aside>
+        </section>
+
+        <section data-auto-animate>
+          <div class="flex">
+            <img src="assets/workers.png">
+            <img src="assets/suspended_deque.png">
+          </div>
+
+          <aside class="notes">
+            Some details
+            Not block the worker thread
+            Using io_uring
+          </aside>
+        </section>
+      </section>
+
+      <!-- Compiler -->
+      <section>
+        <section>
+          <div class="fit-lines" style="--ratio: 4 / 3;">
+            <h2><span class="r-fit-text">– 2023 –</span>
+            <span class="r-fit-text">Writing the Compiler</span></h2>
+          </div>
+
+          <aside class="notes">
+            So far, just a C++ library
+          </aside>
+        </section>
+
+        <section>
+          <figure>
+            <img
+              src="assets/tom_niget.jpg"
+              style="max-height: calc(0.7 * var(--slide-height));">
+            <figcaption>Tom Niget</figcaption>
+          </figure>
+
+          <aside class="notes">
+            In 2023 he was my intern,
+                and we gave him the job to write the compiler
+            He did an exceptional job
+            And he stayed with us at Nexedi after his internship
+            still working on it
+          </aside>
+        </section>
+
+        <section data-auto-animate>
+          <h3 class="r-fit-text">Compiler Design</h3>
+
+          <aside class="notes">
+            A note about compiler design
+          </aside>
+        </section>
+
+        <section data-auto-animate>
+          <h3>Compiler Design</h3>
+          <img src="assets/compiler_pipeline.png">
+
+          <aside class="notes">
+            From source code to output code
+          </aside>
+        </section>
+
+        <section data-auto-animate>
+          <h3>Abstract Syntax Tree</h3>
+          <code class="fragment">import ast</code>
+        </section>
+
+        <section data-auto-animate>
+          <h3>Abstract Syntax Tree</h3>
+          <div class="flex">
+            <pre
+              data-id="source"
+            ><code
+              data-trim
+              data-line-numbers
+              class="hljs python">
+            import ast
+
+            source = """
+            a = 1 + 2
+            """
+
+            print(
+              ast.dump(
+                ast.parse(source),
+                annotate_fields=False,
+                indent=2,
+              )
+            )
+            </code></pre>
+          </div>
+        </section>
+
+        <section data-auto-animate>
+          <h3>Abstract Syntax Tree</h3>
+          <div class="flex">
+            <pre
+              data-id="source"
+            ><code
+              data-trim
+              data-line-numbers
+              class="hljs python">
+            import ast
+
+            source = """
+            a = 1 + 2
+            """
+
+            print(
+              ast.dump(
+                ast.parse(source),
+                annotate_fields=False,
+                indent=2,
+              )
+            )
+            </code></pre>
+            <img src="assets/arrow.png" width=10%>
+            <pre
+            ><code
+              data-trim
+              data-line-numbers
+              class="hljs python">
+            Module(
+              [
+                Assign(
+                  [
+                    Name('a', Store())],
+                  BinOp(
+                    Constant(1),
+                    Add(),
+                    Constant(2)))],
+              [])
+            </code></pre>
+          </div>
+        </section>
+
+        <section data-auto-animate>
+          <h3>Abstract Syntax Tree</h3>
+          <div class="flex">
+            <pre
+              data-id="source"
+            ><code
+              data-trim
+              data-line-numbers="4|5"
+              class="hljs python">
+            import ast
+
+            source = """
+            def f(x):
+              return x.y
+            """
+
+            print(
+              ast.dump(
+                ast.parse(source),
+                annotate_fields=False,
+                indent=2,
+              )
+            )
+            </code></pre>
+            <img src="assets/arrow.png" width=10%>
+            <pre
+              style="--code-height: 36.2ch;"
+            ><code
+              data-trim
+              data-line-numbers="3-11|13-17"
+              class="hljs python">
+            Module(
+              [
+                FunctionDef(
+                  'f',
+                  arguments(
+                    [],
+                    [
+                      arg('x')],
+                    kwonlyargs=[],
+                    kw_defaults=[],
+                    defaults=[]),
+                  [
+                    Return(
+                      Attribute(
+                        Name('x', Load()),
+                        'y',
+                        Load()))],
+                  [])],
+              [])
+            </code></pre>
+          </div>
+        </section>
+
+        <section data-auto-animate data-auto-animate-restart>
+          <div class="flex-vertical">
+            <h3>Visitor Pattern</h3>
+            <pre><code data-trim class="hljs python">
+            import ast
+
+            def compile(source: str):
+              tree = ast.parse(source)
+              # [...]
+              TypeInferer().visit(tree)
+              # [...]
+              CodeGenerator().visit(tree)
+            </code></pre>
+          </div>
+        </section>
+
+        <section data-auto-animate>
+          <div class="flex-vertical">
+            <h3>Visitor Pattern</h3>
+            <pre
+              data-id="visitor-pattern"
+              style="--code-width: 50ch;"
+            ><code
+              data-trim
+              data-line-numbers
+              class="hljs python">
+            from ast import NodeVisitor
+
+            class TypeInferer(NodeVisitor):
+              def visit_Module(self, node):
+                # [...]
+
+              def visit_FuncDef(self, node):
+                # [...]
+
+              def visit_Call(self, node):
+                # [...]
+
+              def visit_Name(self, node):
+                # [...]
+            </code></pre>
+          </div>
+        </section>
+
+        <section data-auto-animate>
+          <div class="flex-vertical">
+            <h3>Visitor Pattern</h3>
+            <pre
+              data-id="visitor-pattern"
+              style="--code-width: 50ch; --code-height: 20.2ch"
+            ><code
+              data-trim
+              data-line-numbers="1-8|3|3-4|3-6"
+              class="hljs python">
+            class NodeVisitor(ast.NodeVisitor):
+              def visit(self, node):
+                for cls in node.__class__.__mro__:
+                  name = 'visit_' + class.__name__
+                  if visitor := getattr(self, name, None):
+                    visitor(node)
+                else:
+                  self.generic_visit(node)
+
+            class TypeInferer(NodeVisitor):
+              def visit_Module(self, node):
+                # [...]
+
+              def visit_FuncDef(self, node):
+                # [...]
+
+              def visit_Call(self, node):
+                # [...]
+
+              def visit_Name(self, node):
+                # [...]
+            </code></pre>
+          </div>
+
+          <aside class="notes">
+            You can use the NodeVisitor class provided by ast module...
+            ...Or you can roll your own
+            Here the idea is to walk back the class hierarchy to find
+                a base class for which the visitor implements a visit method
+            If none is found you can have a fallback that just calls visit
+                all children nodes, or raise a NotImplementedError
+          </aside>
+        </section>
+
+        <section data-auto-animate>
+          <div class="flex-vertical">
+            <h3>Visitor Pattern</h3>
+            <pre
+              data-id="visitor-pattern"
+              style="--code-width: 50ch; --code-height: 26.2ch"
+            ><code
+              data-trim
+              data-line-numbers="3-5"
+              class="hljs python">
+            class NodeVisitor(ast.NodeVisitor):
+              def visit(self, node):
+                if isinstance(node, list):
+                  for n in node:
+                    self.visit(n)
+                for cls in node.__class__.__mro__:
+                  name = 'visit_' + class.__name__
+                  if visitor := getattr(self, name, None):
+                    visitor(node)
+                else:
+                  self.generic_visit(node)
+
+            class TypeInferer(NodeVisitor):
+            </code></pre>
+          </div>
+
+          <aside class="notes">
+            For added convenience you can handle lists of nodes too
+          </aside>
+        </section>
+      </section>
+
+      <section>
+        <section>
+          <h2 class="r-fit-text">Type Inference</h2>
+
+          <aside class="notes">
+            We started out using a variant of Hindley-Milner type inference,
+                and then Tom implemented generics a few months ago
+                and now I'm not quite sure what to call our
+                type inference algorithm. So I won't tell you about
+                Hindley-Milner even though it's all kinds of interesting.
+                Let's go straight to a look at generics.
+          </aside>
+        </section>
+
+        <section data-auto-animate>
+          <h3>Generics</h3>
+          <pre
+            data-id="generics"
+            style="--code-width: 40ch;"
+          ><code
+            data-trim
+            data-line-numbers
+            data-ln-start-from="10"
+            class="hljs python">
+          def add(a, b):
+            return a + b
+
+          add(1, 2) # ok
+          add("hello", "world") # ok
+          add(1, "world") # error
+          </code></pre>
+        </section>
+
+        <section data-auto-animate>
+          <h3>Generics</h3>
+          <pre
+            data-id="generics"
+            style="--code-width: 40ch;"
+          ><code
+            data-trim
+            data-line-numbers="8-13"
+            data-ln-start-from="10"
+            class="hljs python">
+          def add(a, b):
+            return a + b
+
+          add(1, 2) # ok
+          add("hello", "world") # ok
+          add(1, "world") # error
+
+          class Weird:
+            def __add__(self, whatever):
+              return str(whatever)
+
+          s = add(Weird(), 1) # ok, s: str
+          </code></pre>
+        </section>
+
+        <section data-auto-animate>
+          <h3>Generics</h3>
+          <pre><code
+            data-trim
+            class="hljs python">
+          l = []      # list[T]
+          l.append(1) # T = int
+          </code></pre>
+        </section>
+      </section>
+
+      <section>
+        <section>
+          <h2 class="r-fit-text">Code Generation</h2>
+
+          <aside class="notes">
+            This is the part where you're going to see some C++ code
+            It's also a part where some familiarity with the Python
+                object model will be helpful
+            Buckle your belt,
+                and don't worry if you don't follow all of it
+          </aside>
+        </section>
+
+        <section data-auto-animate>
+          <h3>C++ pretending to be Python</h3>
+          <div class="flex fragment">
+            <pre
+              data-id="python"
+              style="--code-width: 22ch;"
+            ><code
+              data-trim
+              data-line-numbers
+              data-ln-start-from="10"
+              class="hljs python">
+            def f():
+              pass
+            </code></pre>
+            <img src="assets/arrow.png" width=10%>
+            <pre
+              data-id="cpp"
+              style="--code-width: 38ch;"
+            ><code
+              data-trim
+              data-line-numbers
+              data-ln-start-from="10"
+              class="hljs cpp">
+            void f() {}
+            </code></pre>
+          </div>
+        </section>
+
+        <section data-auto-animate>
+          <h3>C++ pretending to be Python</h3>
+          <div class="flex">
+            <pre
+              data-id="python"
+              style="--code-width: 22ch;"
+            ><code
+              data-trim
+              data-line-numbers="4"
+              data-ln-start-from="10"
+              class="hljs python">
+            def f():
+              pass
+
+            a = f
+            </code></pre>
+            <img src="assets/arrow.png" width=10%>
+            <pre
+              data-id="cpp"
+              style="--code-width: 38ch;"
+            ><code
+              data-trim
+              data-line-numbers
+              data-ln-start-from="10"
+              class="hljs cpp">
+            struct {
+              void operator() () {}
+            } f {};
+
+            auto a = f;
+            </code></pre>
+          </div>
+        </section>
+
+        <section data-auto-animate>
+          <h3>C++ pretending to be Python</h3>
+          <div class="flex">
+            <pre
+              data-id="python"
+              style="--code-width: 22ch;"
+            ><code
+              data-trim
+              data-line-numbers="1"
+              data-ln-start-from="10"
+              class="hljs python">
+            def f(x):
+              pass
+
+            a = f
+            </code></pre>
+            <img src="assets/arrow.png" width=10%>
+            <pre
+              data-id="cpp"
+              style="--code-width: 38ch;"
+            ><code
+              data-trim
+              data-line-numbers="2"
+              data-ln-start-from="10"
+              class="hljs cpp">
+            struct {
+              void operator() (auto x) {}
+            } f {};
+
+            auto a = f;
+            </code></pre>
+          </div>
+        </section>
+
+        <section data-auto-animate>
+          <h3>C++ pretending to be Python</h3>
+          <div class="flex">
+            <pre
+              data-id="python"
+              style="--code-width: 22ch;"
+            ><code
+              data-trim
+              data-line-numbers="2"
+              data-ln-start-from="10"
+              class="hljs python">
+            def f(x):
+              return x.y
+
+            a = f
+            </code></pre>
+            <img src="assets/arrow.png" width=10%>
+            <pre
+              data-id="cpp"
+              style="--code-width: 38ch;"
+            ><code
+              data-trim
+              data-line-numbers="2-3"
+              data-ln-start-from="10"
+              class="hljs cpp">
+            <script type="text/template">
+            struct {
+              auto operator() (auto x) {
+                return x->y;
+              }
+            } f {};
+
+            auto a = f;
+            </script></code></pre>
+          </div>
+        </section>
+
+        <section data-auto-animate>
+          <h3>C++ pretending to be Python</h3>
+          <div class="flex">
+            <pre
+              data-id="python"
+              style="--code-width: 22ch;"
+            ><code
+              data-trim
+              data-line-numbers="1-2"
+              data-ln-start-from="10"
+              class="hljs python">
+            class X:
+              pass
+
+            def f(x):
+              return x.y
+
+            a = f
+            </code></pre>
+            <img src="assets/arrow.png" width=10%>
+            <pre
+              data-id="cpp"
+              style="--code-width: 38ch;"
+            ><code
+              data-trim
+              data-line-numbers="1,5-8|2-3|1-8"
+              data-ln-start-from="10"
+              class="hljs cpp">
+            <script type="text/template">
+            struct class_X : Class<class_X> {
+              struct Obj : Instance<Obj> {
+              };
+
+              auto operator() () {
+                return Obj{};
+              }
+            } X {};
+
+            struct {
+              auto operator() (auto x) {
+                return x->y;
+              }
+            } f {};
+
+            auto a = f;
+            </script></code></pre>
+          </div>
+        </section>
+
+        <section data-auto-animate>
+          <h3>C++ pretending to be Python</h3>
+          <div class="flex">
+            <pre
+              data-id="python"
+              style="--code-width: 22ch;"
+            ><code
+              data-trim
+              data-line-numbers="1-2"
+              data-ln-start-from="10"
+              class="hljs python">
+            class X:
+              pass
+
+            def f(x):
+              return x.y
+            </code></pre>
+            <img src="assets/arrow.png" width=10%>
+            <pre
+              data-id="cpp"
+              style="--code-width: 38ch;"
+            ><code
+              data-trim
+              data-line-numbers="6"
+              data-ln-start-from="10"
+              class="hljs cpp">
+            <script type="text/template">
+            struct class_X : Class<class_X> {
+              struct Obj : Instance<Obj> {
+              };
+
+              auto operator() () {
+                return Rc(Obj{});
+              }
+            } X {};
+
+            struct {
+              auto operator() (auto x) {
+                return x->y;
+              }
+            } f {};
+            </script></code></pre>
+          </div>
+        </section>
+
+        <section data-auto-animate>
+          <h3>C++ pretending to be Python</h3>
+          <div class="flex">
+            <pre
+              data-id="python"
+              style="--code-width: 22ch;"
+            ><code
+              data-trim
+              data-line-numbers="2"
+              data-ln-start-from="10"
+              class="hljs python">
+            class X:
+              y : int
+
+            def f(x):
+              return x.y
+            </code></pre>
+            <img src="assets/arrow.png" width=10%>
+            <pre
+              data-id="cpp"
+              style="--code-width: 38ch;"
+            ><code
+              data-trim
+              data-line-numbers="3"
+              data-ln-start-from="10"
+              class="hljs cpp">
+            <script type="text/template">
+            struct class_X : Class<class_X> {
+              struct Obj : Instance<Obj> {
+                int y;
+              };
+
+              auto operator() () {
+                return Obj{};
+              }
+            } X {};
+
+            struct {
+              auto operator() (auto x) {
+                return x->y;
+              }
+            } f {};
+            </script></code></pre>
+          </div>
+        </section>
+
+
+        <section data-auto-animate>
+          <h3>C++ pretending to be Python</h3>
+          <div class="flex">
+            <pre
+              data-id="python"
+              style="--code-width: 22ch;"
+            ><code
+              data-trim
+              data-line-numbers="2-3"
+              data-ln-start-from="10"
+              class="hljs python">
+            class X:
+              def y(self):
+                pass
+
+            def f(x):
+              return x.y
+            </code></pre>
+            <img src="assets/arrow.png" width=10%>
+            <pre
+              data-id="cpp"
+              style="--code-width: 38ch;"
+            ><code
+              data-trim
+              data-line-numbers="9-11"
+              data-ln-start-from="10"
+              class="hljs cpp">
+            <script type="text/template">
+            struct class_X : Class<class_X> {
+              struct Obj : Instance<Obj> {
+              };
+
+              auto operator() () {
+                return Rc(Obj{});
+              }
+
+              struct {
+                auto operator() (auto self) {}
+              } y {};
+            } X {};
+
+            struct {
+              auto operator() (auto x) {
+                return x->y;
+              }
+            } f {};
+            </script></code></pre>
+          </div>
+        </section>
+
+        <section data-auto-animate>
+          <h3>C++ pretending to be Python</h3>
+          <div class="flex">
+            <pre
+              data-id="python"
+              style="--code-width: 22ch;"
+            ><code
+              data-trim
+              data-line-numbers="5-8,10"
+              data-ln-start-from="10"
+              class="hljs python">
+            class X:
+              def y(self):
+                pass
+
+            def f(x):
+              # what if x.y is
+              # a boundmethod?
+              return x.y
+
+            x_dot_y = f(X())
+            </code></pre>
+            <img src="assets/arrow.png" width=10%>
+            <pre
+              data-id="cpp"
+              style="--code-width: 38ch;"
+            ><code
+              data-trim
+              data-line-numbers="22|16-19,23"
+              data-ln-start-from="10"
+              class="hljs cpp">
+            <script type="text/template">
+            struct class_X : Class<class_X> {
+              struct Obj : Instance<Obj> {
+              };
+
+
+              auto operator() () {
+                return Rc(Obj{});
+              }
+
+              struct {
+                auto operator() (auto self) {}
+              } y {};
+            } X {};
+
+            struct {
+              auto operator() (auto x) {
+                // if x is an instance, create
+                // a boundmethod, else do x->y
+                return dot(x, y);
+              }
+            } f {};
+
+            auto x_dot_y = f(X());
+            </script></code></pre>
+          </div>
+        </section>
+
+        <section data-auto-animate>
+          <h3>C++ pretending to be Python</h3>
+          <h4>...And so on</h4>
+          <ul>
+            <li class="fragment">Inheritance</li>
+            <li class="fragment">MRO (multiple inheritance)</li>
+            <li class="fragment">Generic classes</li>
+            <li class="fragment">...</li>
+          </ul>
+
+          <aside class="notes">
+            Keep in mind this was simplified C++ code
+            The actually generated code is more complex due to
+                additional constraints
+            I hope I gave you a feel of how C++ can be use to mimic
+                Python
+          </aside>
+        </section>
+      </section>
+
+      <section>
+        <section>
+          <h2 class="r-fit-text">Python Interoperability</h2>
+        </section>
+
+        <section data-auto-animate>
+          <h3>Calling Python</h3>
+          <pre
+            data-id="code"
+            style="--code-width: 50ch;"
+          ><code
+            data-trim
+            data-line-numbers
+            class="hljs python">
+          import numpy
+
+          if __name__ == "__main__":
+
+            x = [i for i in range(5)]
+
+            y = numpy.square(x)
+
+            z : list[int] = y
+
+            print(x, y)
+          </code></pre>
+        </section>
+
+        <section data-auto-animate>
+          <h3>Calling Python</h3>
+          <pre
+            data-id="code"
+            style="--code-width: 50ch; --code-height: 34ch;"
+          ><code
+            data-trim
+            data-line-numbers
+            class="hljs python">
+          # via pybind11, 'numpy' is a Python object
+          import numpy
+
+          if __name__ == "__main__":
+
+            # list[int], pure C++
+            x = [i for i in range(5)]
+
+            # convert 'x' to Python, get a Python object
+            y = numpy.square(x)
+
+            # convert Python object to list[int]
+            z : list[int] = y
+
+            # pure C++
+            print(x, y)
+          </code></pre>
+        </section>
+
+        <section>
+          <h3>When Python calls you</h3>
+          <pre
+          ><code
+            data-trim
+            class="hljs python">
+          <script type="text/template">
+          import numpy
+          from typon import export
+
+          @export([int])
+          def square(n) -> list[int]
+            return numpy.square([i for i in range(n)])
+          </script></code></pre>
+        </section>
+      </section>
+
+      <section>
+        <section data-auto-animate>
+          <h2 class="r-fit-text">Towards a Standard Library</h2>
+        </section>
+
+        <section data-auto-animate>
+          <h2>Towards a Standard Library</h2>
+          <h3 style="text-transform: none;">
+          Typon/C++ Bindings = Python Stubs + C++ Implementations
+          </h3>
+          <ul style="text-transform: none;">
+            <li class="fragment"><code>builtins</code>:
+              <code>list</code>, <code>dict</code>, <code>str</code>,
+              <code>print</code>, <code>open</code>, ...</li>
+            <li class="fragment"><code>socket</code>:
+              <code>io_uring</code></li>
+            <li class="fragment"><code>os</code> (some):
+              <code>io_uring</code></li>
+            <li class="fragment">...</li>
+            <li class="fragment">A work in progress :)</li>
+          </ul>
+
+          <aside class="notes">
+            Typed standard library can help type inference
+          </aside>
+        </section>
+      </section>
+
+      <!-- Where to find more -->
+      <section>
+        <h2 class="r-fit-text"><a
+          href=https://pypi.org/project/typon/
+          style="text-transform: none;"
+          ><u>pypi.org/project/typon/</u></a></h2>
+
+          <aside class="notes">
+            There's loads more to say, but we're running out of time
+          </aside>
+      </section>
+
+      <!-- The end -->
+      <section>
+        <h2 class="r-fit-text">Thank you!</h2>
+      </section>
+
+    </div></div>
+
+    <script src="dist/reveal.js"></script>
+    <script src="plugin/notes/notes.js"></script>
+    <script src="plugin/highlight/highlight.js"></script>
+    <script>
+      Reveal.initialize({
+        width: 1920,
+        height: 1080,
+        hash: false,
+        autoAnimateDuration: 0.8,
+        plugins: [ RevealHighlight, RevealNotes ]
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,57 @@
+.fit-lines {
+  /*
+  Fit text without overflowing below the bottom of the viewport.
+  reveal.js visibly makes text responsive to viewport dimensions,
+  but high fonts can still overflow - as the responsivity does
+  not take the font height into account. This works around that
+  based on a manual conservative estimation of the aspect-ratio
+  of the fitted text - as long as that estimation leans towards
+  being to high rather then too wide compared to the actual
+  aspect-ratio of the fitting text, it will not overflow. The
+  closer to the actual aspect-ratio, the bigger the fitted
+  text will be. The actual aspect-ratio depends on the font.
+  */
+  aspect-ratio: var(--ratio);
+  height: var(--slide-height);
+}
+
+.fit-lines, .flex, .flex-vertical {
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fit-lines, .flex-vertical {
+  flex-direction: column;
+}
+
+.reveal img {
+  max-height: calc(0.95 * var(--slide-height));
+}
+
+.reveal pre {
+  /* override css theme */
+  box-shadow: none;
+  width: var(--code-width, max-content);
+  font-size: 0.9em;
+  line-height: 2ch;
+  --code-height: 30ch;
+  max-height: var(--code-height);
+}
+
+.reveal pre code {
+  /* override css theme */
+  max-height: none;
+}
+
+.reveal .hljs {
+  /* override highlight theme */
+  background: var(--r-background-color);
+}
+
+:root {
+  /* override css theme */
+  --r-heading-margin: 0 0 50px 0;
+}
+
